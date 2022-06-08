@@ -4,47 +4,46 @@ const app = express();
 
 const { MongoClient } = require("mongodb");
 
-const uri = "mongodb+srv://USERNAME:PASSWORD@CLUSTER_NAME.mongodb.net/DATABASE_NAME?retryWrites=true&w=majority";
+const uri = process.env.MONGODB_URI;
 
 // use the express-static middleware
 app.use(express.static("public"));
 
 // define the first route
-app.get("/api/movie", async function (req, res) {
-  const client = new MongoClient(uri, { useUnifiedTopology: true });
-  
-  try {
-    await client.connect();
+app.get("/api/movie", async function(req, res) {
+    const client = new MongoClient(uri, { useUnifiedTopology: true });
 
-    const database = client.db('sample_mflix');
-    const collection = database.collection('movies');
+    try {
+        await client.connect();
 
-    // Query for a movie that has the title 'Back to the Future'
-    const query = { genres: "Comedy", poster: { $exists: true } };
-    const cursor = await collection.aggregate([
-      { $match: query },
-      { $sample: { size: 1 } },
-      { $project: 
-        {
-          title: 1,
-          fullplot: 1,
-          poster: 1
-        }
-      }
-    ]);
+        const database = client.db('sample_mflix');
+        const collection = database.collection('movies');
 
-    const movie = await cursor.next();
+        // Query for a movie that has the title 'Back to the Future'
+        const query = { genres: "Comedy", poster: { $exists: true } };
+        const cursor = await collection.aggregate([
+            { $match: query },
+            { $sample: { size: 1 } },
+            {
+                $project: {
+                    title: 1,
+                    fullplot: 1,
+                    poster: 1
+                }
+            }
+        ]);
 
-    return res.json(movie);
-  } catch(err) {
-    console.log(err);
-  }
-  finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
-  }
+        const movie = await cursor.next();
+
+        return res.json(movie);
+    } catch (err) {
+        console.log(err);
+    } finally {
+        // Ensures that the client will close when you finish/error
+        await client.close();
+    }
 });
 
 // start the server listening for requests
-app.listen(process.env.PORT || 3000, 
-	() => console.log("Server is running..."));
+app.listen(process.env.PORT || 3000,
+    () => console.log("Server is running..."));
